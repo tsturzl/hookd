@@ -1,4 +1,6 @@
+#WOP
 
+This is currently uncomplete and a work in progress. Do not use, currently untested.
 
 ##What is it?
 
