@@ -2,7 +2,6 @@
 import sys
 import os
 import logging
-from __future__ import print_function
 from klein import Klein
 from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 from twisted.internet.error import ProcessTerminated
@@ -10,10 +9,18 @@ from hook import Hook
 
 ENV = os.environ['PY_ENV']
 
+logger = logging.getLogger()
+formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler(sys.stdout)
 if(ENV is "test"):
-  logging.basicConfig(level=logging.DEBUG)
+  logger.setLevel(logging.DEBUG)
+  ch.setLevel(logging.DEBUG)
 else:
-  logging.basicConfig(level=logging.ERROR)
+  logger.setLevel(logging.ERROR)
+  ch.setLevel(logging.ERROR)
+
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 try:
   import json
@@ -26,6 +33,9 @@ class NotFound(Exception):
 class App(object):
   app = Klein()
 
+  def __init__(self):
+    self.app.run("localhost", 3000)
+
   @app.handle_errors(NotFound)
   def notfound(self, request, failure):
     request.setResponseCode(404)
@@ -35,6 +45,8 @@ class App(object):
   @inlineCallbacks
   def hook(self, request, hookName):
     try:
+      logger.info("Hook called: " + hookName)
+
       #make sure json is valid and unprettified
       body = json.dumps(json.loads(request.content.read()))
 
@@ -43,11 +55,13 @@ class App(object):
 
       returnValue(result)
     except ValueError, e:
-      logging.error(hookName + " Called with invalid JSON")
-      logging.debug(e)
+      logger.error(hookName + " Called with invalid JSON")
+      logger.debug(e)
       raise NotFound()
     except ProcessTerminated, e:
-      logging.error(hookName + " Command exited with a non-zero code(unsuccessful)")
-      logging.debug(e)
-      logging
+      logger.error(hookName + " Command exited with a non-zero code(unsuccessful)")
+      logger.debug(e)
       raise NotFound()
+
+if __name__ == "__main__":
+  App()
